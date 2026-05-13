@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { TAGS } from "../constants";
-import css from "@/styles/SidebarNotes.module.css";
+import css from "./../[...slug]/SidebarNotes.module.css";
 
 export default function SidebarDefault() {
   return (
