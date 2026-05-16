@@ -8,7 +8,7 @@ import { useAuthStore, selectSetUser } from "@/lib/store/authStore";
 import type { UpdateUserPayload } from "@/lib/api/clientApi";
 import axios from "axios";
 import Image from "next/image";
-import css from "./EditProfile.module.css";
+import css from "./EditProfilePage.module.css";
 
 export default function EditProfilePage() {
   const router = useRouter();
