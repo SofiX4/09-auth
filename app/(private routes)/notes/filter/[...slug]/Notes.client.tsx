@@ -38,7 +38,7 @@ export default function NotesClient({ initialTag }: NotesClientProps) {
         perPage?: number;
       } = {
         page: currentPage,
-        perPage: 9,
+        perPage: 12,
       };
 
       if (currentTag && currentTag !== "all") {

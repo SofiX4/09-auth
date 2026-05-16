@@ -1,28 +1,35 @@
-// app/(private routes)/profile/edit/page.tsx
 "use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getMe, updateMe } from "@/lib/api/clientApi";
-import Image from "next/image";
+import { useAuthStore, selectSetUser } from "@/lib/store/authStore";
+import type { UpdateUserPayload } from "@/lib/api/clientApi";
 import axios from "axios";
-import css from "./EditProfilePage.module.css";
+import Image from "next/image";
+import css from "./EditProfile.module.css";
 
 export default function EditProfilePage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [error, setError] = useState<string>("");
+  const setUser = useAuthStore(selectSetUser);
 
-  // Отримуємо поточні дані користувача
   const { data: user, isLoading } = useQuery({
     queryKey: ["user"],
     queryFn: getMe,
   });
 
-  // Мутація для оновлення профілю
   const updateMutation = useMutation({
-    mutationFn: (updates: { username: string }) => updateMe(updates),
-    onSuccess: () => {
+    mutationFn: (updates: UpdateUserPayload) => updateMe(updates),
+    onSuccess: (updatedUser) => {
+      setUser(updatedUser);
+
+      queryClient.setQueryData(["user"], updatedUser);
+
+      queryClient.invalidateQueries({ queryKey: ["user"] });
+
       router.push("/profile");
     },
     onError: (error: unknown) => {
@@ -40,17 +47,18 @@ export default function EditProfilePage() {
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    if (updateMutation.isPending) return;
+
     setError("");
 
     const formData = new FormData(e.currentTarget);
-    const username = formData.get("username") as string;
 
-    if (!username.trim()) {
-      setError("Username cannot be empty");
-      return;
-    }
+    const updates: UpdateUserPayload = {
+      username: formData.get("username") as string,
+    };
 
-    updateMutation.mutate({ username: username.trim() });
+    updateMutation.mutate(updates);
   };
 
   const handleCancel = () => {
@@ -65,6 +73,8 @@ export default function EditProfilePage() {
           alignItems: "center",
           justifyContent: "center",
           minHeight: "100vh",
+          fontSize: "1.5rem",
+          color: "#6b7280",
         }}
       >
         Loading...
@@ -78,52 +88,66 @@ export default function EditProfilePage() {
 
   return (
     <main className={css.mainContent}>
-      <div className={css.profileCard}>
+      <form className={css.form} onSubmit={handleSubmit}>
         <h1 className={css.formTitle}>Edit Profile</h1>
 
-        <Image
-          src={user.avatar || "/default-avatar.png"}
-          alt="User Avatar"
-          width={120}
-          height={120}
-          className={css.avatar}
-        />
+        <div className={css.avatarWrapper}>
+          <Image
+            src={user.avatar || "/default-avatar.png"}
+            alt="User Avatar"
+            width={120}
+            height={120}
+            className={css.avatar}
+          />
+        </div>
 
-        <form className={css.profileInfo} onSubmit={handleSubmit}>
-          <div className={css.usernameWrapper}>
-            <label htmlFor="username">Username:</label>
-            <input
-              id="username"
-              type="text"
-              name="username"
-              className={css.input}
-              defaultValue={user.username} // ← ВИПРАВЛЕНО: defaultValue замість value
-              required
-            />
-          </div>
+        <div className={css.formGroup}>
+          <label htmlFor="username">Username</label>
+          <input
+            id="username"
+            type="text"
+            name="username"
+            defaultValue={user.username}
+            className={css.input}
+            required
+            minLength={3}
+          />
+        </div>
 
-          <p>Email: {user.email}</p>
+        <div className={css.formGroup}>
+          <label htmlFor="email">Email</label>
+          <input
+            id="email"
+            type="email"
+            value={user.email}
+            className={css.input}
+            disabled
+            readOnly
+          />
+          <p className={css.helperText}>Email cannot be changed</p>
+        </div>
 
-          {error && <p className={css.error}>{error}</p>}
+        <div className={css.actions}>
+          <button
+            type="submit"
+            className={css.submitButton}
+            disabled={updateMutation.isPending}
+          >
+            {updateMutation.isPending ? "Saving..." : "Save"}
+          </button>
 
-          <div className={css.actions}>
-            <button
-              type="submit"
-              className={css.saveButton}
-              disabled={updateMutation.isPending}
-            >
-              {updateMutation.isPending ? "Saving..." : "Save"}
-            </button>
-            <button
-              type="button"
-              className={css.cancelButton}
-              onClick={handleCancel}
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
-      </div>
+          <button
+            type="button"
+            className={css.cancelButton}
+            onClick={handleCancel}
+            disabled={updateMutation.isPending}
+          >
+            Cancel
+          </button>
+        </div>
+
+        {error && <p className={css.error}>{error}</p>}
+      </form>
     </main>
   );
 }

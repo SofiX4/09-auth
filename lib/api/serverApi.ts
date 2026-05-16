@@ -6,14 +6,13 @@ import { User } from "@/types/user";
 
 const baseURL = process.env.NEXT_PUBLIC_API_URL + "/api";
 
-// Допоміжна функція для отримання cookies
-async function getCookieHeader() {
+const getCookieHeader = async () => {
   const cookieStore = await cookies();
-  const allCookies = cookieStore.getAll();
-  return allCookies
+  return cookieStore
+    .getAll()
     .map((cookie) => `${cookie.name}=${cookie.value}`)
     .join("; ");
-}
+};
 
 // ========== TYPES ==========
 
@@ -86,5 +85,6 @@ export const getMe = async (): Promise<User> => {
       Cookie: cookieHeader,
     },
   });
+
   return res.data;
 };

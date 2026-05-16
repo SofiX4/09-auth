@@ -4,23 +4,32 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
 import { register, type RegisterRequest } from "@/lib/api/clientApi";
+import { useAuthStore, selectSetUser } from "@/lib/store/authStore";
 import axios from "axios";
 import css from "./SignUpPage.module.css";
 
 export default function SignUpPage() {
   const router = useRouter();
   const [error, setError] = useState<string>("");
+  const setUser = useAuthStore(selectSetUser);
 
   const registerMutation = useMutation({
     mutationFn: register,
-    onSuccess: () => {
+    onSuccess: (user) => {
+      setUser(user);
       router.push("/profile");
     },
     onError: (error: unknown) => {
       if (axios.isAxiosError(error)) {
-        const errorMessage =
-          error.response?.data?.error || error.message || "Registration failed";
-        setError(errorMessage);
+        if (error.response?.status === 409) {
+          setError("This email is already registered");
+        } else {
+          const errorMessage =
+            error.response?.data?.error ||
+            error.message ||
+            "Registration failed";
+          setError(errorMessage);
+        }
       } else {
         setError("An unexpected error occurred");
       }
@@ -29,6 +38,9 @@ export default function SignUpPage() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    if (registerMutation.isPending) return;
+
     setError("");
 
     const formData = new FormData(e.currentTarget);
@@ -42,8 +54,9 @@ export default function SignUpPage() {
 
   return (
     <main className={css.mainContent}>
-      <h1 className={css.formTitle}>Sign up</h1>
       <form className={css.form} onSubmit={handleSubmit}>
+        <h1 className={css.formTitle}>Sign up</h1>
+
         <div className={css.formGroup}>
           <label htmlFor="email">Email</label>
           <input
@@ -63,6 +76,7 @@ export default function SignUpPage() {
             name="password"
             className={css.input}
             required
+            minLength={6}
           />
         </div>
 

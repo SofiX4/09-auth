@@ -33,18 +33,25 @@ export interface CreateNotePayload {
   tag: string;
 }
 
+export interface UpdateUserPayload {
+  username: string;
+}
+
 // ========== NOTES ==========
 
 export const fetchNotes = async (
   params?: FetchNotesParams
 ): Promise<FetchNotesResponse> => {
-  const res = await apiClient.get<FetchNotesResponse>("/notes", {
+  const response = await apiClient.get<FetchNotesResponse>("/notes", {
     params: {
-      ...params,
-      perPage: 12,
+      page: params?.page || 1,
+      perPage: params?.perPage || 12,
+      ...(params?.tag && { tag: params.tag }),
+      ...(params?.search && { search: params.search }),
     },
   });
-  return res.data;
+
+  return response.data;
 };
 
 export const fetchNoteById = async (id: NoteId): Promise<Note> => {
@@ -80,15 +87,16 @@ export const logout = async (): Promise<void> => {
   await apiClient.post("/auth/logout");
 };
 
-export const checkSession = async (): Promise<User | null> => {
+export const checkSession = async (): Promise<boolean> => {
   try {
-    const res = await apiClient.get<User>("/auth/session");
-    return res.data;
+    await apiClient.get("/auth/session");
+    return true;
   } catch (error) {
     if (axios.isAxiosError(error) && error.response?.status === 401) {
-      return null;
+      return false;
     }
-    return Promise.reject(error);
+
+    throw error;
   }
 };
 
@@ -99,7 +107,7 @@ export const getMe = async (): Promise<User> => {
   return res.data;
 };
 
-export const updateMe = async (updates: Partial<User>): Promise<User> => {
+export const updateMe = async (updates: UpdateUserPayload): Promise<User> => {
   const res = await apiClient.patch<User>("/users/me", updates);
   return res.data;
 };

@@ -8,14 +8,3 @@ export const apiClient = axios.create({
   withCredentials: true,
 });
 
-if (typeof window !== "undefined") {
-  apiClient.interceptors.response.use(
-    (response) => response,
-    (error) => {
-      if (error.response?.status === 401) {
-        window.location.href = "/sign-in"; // ← ВИПРАВЛЕНО: /sign-in замість /auth/login
-      }
-      return Promise.reject(error);
-    }
-  );
-}

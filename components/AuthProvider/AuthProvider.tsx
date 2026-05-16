@@ -1,9 +1,8 @@
-// components/AuthProvider/AuthProvider.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { checkSession } from "@/lib/api/clientApi";
+import { checkSession, getMe } from "@/lib/api/clientApi";
 import {
   useAuthStore,
   selectSetUser,
@@ -23,37 +22,56 @@ export default function AuthProvider({
   const setUser = useAuthStore(selectSetUser);
   const clearUser = useAuthStore(selectClearUser);
 
+  // Зберігаємо останній перевірений шлях
+  const lastVerifiedPath = useRef<string | null>(null); // ← ВИПРАВЛЕНО: string | null
+
   useEffect(() => {
+    // Якщо вже перевірили цей шлях - не робимо повторно
+    if (lastVerifiedPath.current === pathname) {
+      // ← ВИПРАВЛЕНО
+      return;
+    }
+
     const verifySession = async () => {
       const isPrivateRoute = privateRoutes.some((route) =>
         pathname.startsWith(route)
       );
 
       try {
-        const user = await checkSession();
+        // Крок 1: Перевірити чи сесія дійсна
+        const isSessionValid = await checkSession();
 
-        if (user) {
-          setUser(user); // ← Оновлюємо Zustand
+        if (isSessionValid) {
+          // Крок 2: Отримати дані користувача ОКРЕМО
+          const user = await getMe();
+          setUser(user);
         } else {
-          clearUser(); // ← ВАЖЛИВО: очищаємо при відсутності сесії
+          // Сесія недійсна - очищаємо Zustand
+          clearUser();
 
+          // Якщо користувач на приватному маршруті - редірект на логін
           if (isPrivateRoute) {
             router.push("/sign-in");
           }
         }
       } catch {
-        clearUser(); // ← ВАЖЛИВО: очищаємо при помилці
+        // Помилка при отриманні даних - очищаємо Zustand
+        clearUser();
 
+        // Якщо користувач на приватному маршруті - редірект на логін
         if (isPrivateRoute) {
           router.push("/sign-in");
         }
       } finally {
+        // Завжди прибираємо loading стан
         setIsLoading(false);
+        lastVerifiedPath.current = pathname; // ← ВИПРАВЛЕНО: зберігаємо шлях
       }
     };
 
     verifySession();
-  }, [pathname, router, setUser, clearUser]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
 
   if (isLoading) {
     return (

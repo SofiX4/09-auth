@@ -1,35 +1,22 @@
-// app/(private routes)/profile/page.tsx
-"use client";
-
+import { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
-import { useQuery } from "@tanstack/react-query";
-import { getMe } from "@/lib/api/clientApi";
-import css from "./EditProfilePage.module.css";
+import { getMe } from "@/lib/api/serverApi";
+import { redirect } from "next/navigation";
+import css from "./ProfilePage.module.css";
 
-export default function ProfilePage() {
-  const { data: user, isLoading } = useQuery({
-    queryKey: ["user"],
-    queryFn: getMe,
-  });
+export const metadata: Metadata = {
+  title: "Profile | NoteHub",
+  description: "View and manage your profile",
+};
 
-  if (isLoading) {
-    return (
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          minHeight: "100vh",
-        }}
-      >
-        Loading...
-      </div>
-    );
-  }
+export default async function ProfilePage() {
+  let user;
 
-  if (!user) {
-    return <div>User not found</div>;
+  try {
+    user = await getMe();
+  } catch {
+    redirect("/sign-in");
   }
 
   return (
@@ -49,12 +36,17 @@ export default function ProfilePage() {
             width={120}
             height={120}
             className={css.avatar}
+            priority
           />
         </div>
 
         <div className={css.profileInfo}>
-          <p>Username: {user.username || "your_username"}</p>
-          <p>Email: {user.email || "your_email@example.com"}</p>
+          <p>
+            <strong>Username:</strong> {user.username || "your_username"}
+          </p>
+          <p>
+            <strong>Email:</strong> {user.email || "your_email@example.com"}
+          </p>
         </div>
       </div>
     </main>
